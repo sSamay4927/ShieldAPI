@@ -17,7 +17,9 @@ describe('Health Routes (/health)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ready');
+    expect(res.body.redis).toBeDefined();
     expect(res.body.mongo).toBeDefined();
+    expect(res.body.queue).toBeDefined();
     expect(res.body.timestamp).toBeDefined();
     expect(res.headers['x-request-id']).toBeDefined();
   });

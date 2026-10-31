@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { getPolicy } = require('../config/policies');
 const rateLimiterService = require('../services/rateLimiter.service');
+const auditService = require('../services/audit.service');
 const { logger } = require('../utils/logger');
 const { ServiceUnavailableError } = require('../utils/errors');
 
@@ -64,6 +65,9 @@ function createRateLimitMiddleware(options = {}) {
 
       // Quota exceeded: set Retry-After header and return 429 JSON
       res.setHeader('Retry-After', String(decision.retryAfterSec));
+
+      // Asynchronously record audit event to BullMQ without blocking the HTTP response
+      auditService.recordRateLimitViolation(req, decision).catch(() => {});
 
       logger.warn('Rate limit exceeded for client', {
         requestId,

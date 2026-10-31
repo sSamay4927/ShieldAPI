@@ -182,3 +182,4 @@ describe('Gateway Reverse Proxy & Upstream Integration (Phase 7)', () => {
     expect(mockUpstreamApp.getHitCount('/catalog')).toBe(1);
   });
 });
+

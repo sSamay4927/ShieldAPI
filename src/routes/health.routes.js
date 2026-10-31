@@ -1,6 +1,7 @@
 const express = require('express');
 const { getStatus: getMongoStatus } = require('../infrastructure/mongo/mongoClient');
 const { ping: pingRedis, isConnected: isRedisConnected, getStatus: getRedisStatus } = require('../infrastructure/redis/redisClient');
+const { getQueueStatus } = require('../infrastructure/queue/auditQueue');
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.get('/ready', async (req, res) => {
 
   const mongoStatus = getMongoStatus();
   const redisStatus = redisHealthy ? 'connected' : getRedisStatus();
+  const queueStatus = getQueueStatus();
 
   // Fail readiness if Redis (the decision store) is unavailable
   if (!redisHealthy) {
@@ -41,6 +43,7 @@ router.get('/ready', async (req, res) => {
       status: 'not_ready',
       redis: redisStatus,
       mongo: mongoStatus,
+      queue: queueStatus,
       message: 'Rate limiter decision store (Redis) is unavailable',
       timestamp: new Date().toISOString()
     });
@@ -50,6 +53,7 @@ router.get('/ready', async (req, res) => {
     status: 'ready',
     redis: 'connected',
     mongo: mongoStatus,
+    queue: queueStatus,
     timestamp: new Date().toISOString()
   });
 });
