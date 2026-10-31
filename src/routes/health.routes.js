@@ -1,7 +1,7 @@
 const express = require('express');
-const { getStatus: getMongoStatus } = require('../infrastructure/mongo/mongoClient');
-const { ping: pingRedis, isConnected: isRedisConnected, getStatus: getRedisStatus } = require('../infrastructure/redis/redisClient');
-const { getQueueStatus } = require('../infrastructure/queue/auditQueue');
+const mongoClient = require('../infrastructure/mongo/mongoClient');
+const redisClient = require('../infrastructure/redis/redisClient');
+const auditQueue = require('../infrastructure/queue/auditQueue');
 
 const router = express.Router();
 
@@ -27,15 +27,15 @@ router.get('/live', (req, res) => {
 router.get('/ready', async (req, res) => {
   let redisHealthy = false;
   try {
-    const pong = await pingRedis();
+    const pong = await redisClient.ping();
     redisHealthy = pong === 'PONG';
   } catch {
     redisHealthy = false;
   }
 
-  const mongoStatus = getMongoStatus();
-  const redisStatus = redisHealthy ? 'connected' : getRedisStatus();
-  const queueStatus = getQueueStatus();
+  const mongoStatus = mongoClient.getStatus();
+  const redisStatus = redisHealthy ? 'connected' : redisClient.getStatus();
+  const queueStatus = auditQueue.getQueueStatus();
 
   // Fail readiness if Redis (the decision store) is unavailable
   if (!redisHealthy) {
