@@ -251,3 +251,4 @@ The proxy ignores `X-Forwarded-Host` and forwards strictly to `UPSTREAM_BASE_URL
 | **TOCTOU Elimination** | 50 concurrent requests result in exactly 10 admissions under limit 10. |
 | **Privacy Preservation** | Only HMAC-SHA256 digests exist in Redis keys and MongoDB logs. |
 | **Decoupled Persistence** | 429 violations persist asynchronously into MongoDB via BullMQ without slowing the gateway. |
+

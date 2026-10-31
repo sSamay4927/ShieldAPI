@@ -247,3 +247,4 @@ See [`docs/BENCHMARKS.md`](file:///c:/Users/samay/OneDrive/Desktop/SheildAPI/doc
 - **Concurrency & Correctness Verification:** Built automated multi-instance concurrency suites testing 50 simultaneous requests against a shared Redis quota, proving exact boundary admission (10 allowed, 40 denied in 167ms).
 - **Asynchronous Reliability Pipeline:** Decoupled security violation audit logging from the request hot path using BullMQ and MongoDB; eliminated database bottlenecks and maintained fail-closed (503) gateway availability during infrastructure outages.
 - **Database Query Optimization:** Engineered compound indexing (`{ identityDigest: 1, occurredAt: -1 }`) on MongoDB audit records, reducing examined documents from 2,221 to 101 (**22× I/O reduction**) verified via `explain("executionStats")`.
+

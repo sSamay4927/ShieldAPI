@@ -24,3 +24,4 @@ EXPOSE 3000
 
 # Default entry point (starts Express gateway server)
 CMD ["node", "src/server.js"]
+

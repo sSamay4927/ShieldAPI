@@ -58,3 +58,4 @@ This document details the security posture, threat model, mitigation controls, a
    app.set('trust proxy', '10.0.0.0/16');
    ```
 3. **Redis Cluster Mode**: The atomic Lua script is fully compatible with Redis standalone and Redis Sentinel. If using Redis Cluster, ensure the rate-limit key uses hash tags `{tenant}` if keys ever span multiple shards.
+
