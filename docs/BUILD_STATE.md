@@ -42,31 +42,22 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 | **Phase 7** | Mock Upstream & Fixed Gateway Proxy | **COMPLETED** | `src/upstream/mockUpstream.js` (`/catalog`, `/slow`, `/echo` with hit tracking), `src/proxy/upstreamProxy.js` (strict fixed target forwarding, body re-streaming, 502/504 error mapping), `src/routes/gateway.routes.js` mounted at `/gateway/v1`. Verified via end-to-end integration tests (47/47 passing). |
 | **Phase 8** | BullMQ Async Audit Pipeline | **COMPLETED** | `src/infrastructure/queue/auditQueue.js` (named queue `shieldapi-audit`, non-blocking enqueueing, queue health status), `src/services/audit.service.js` (payload formatting, zero secret leakage), `src/workers/auditWorker.js` (background worker writing to MongoDB with retry backoff and idempotency), `package.json` `"worker"` script. Verified via unit and E2E tests (52/52 passing). |
 | **Phase 9** | Concurrency, Security & Failure Modes | **COMPLETED** | `scripts/concurrency-test.js` (50 concurrent requests, exactly 10 allowed, 40 rejected with 429), `tests/integration/rateLimit.concurrency.test.js` (multi-gateway Redis sharing), `tests/integration/failureModes.test.js` (Redis outage 503, MongoDB outage degradation, BullMQ degradation, upstream 504/502), `docs/SECURITY.md`, helmet security headers added. 59/59 automated tests passing. |
-| **Phase 10** | Performance Measurement & Benchmarks | PENDING | Scheduled next |
-| **Phase 11** | Docker & Local Reproducibility | PENDING | |
+| **Phase 10** | Performance Measurement & Benchmarks | **COMPLETED** | `scripts/benchmark.js` (HTTP throughput, p50/p90/p95/p99 latency for Baseline vs Gateway Allowed vs Gateway Denied 429), `docs/BENCHMARKS.md` (empirical measurements, bottleneck analysis, and MongoDB `explain("executionStats")` compound index optimization report showing 22x reduction in disk reads). 59/59 automated tests passing. |
+| **Phase 11** | Docker & Local Reproducibility | PENDING | Scheduled next |
 | **Phase 12** | Final Documentation & Demo Guide | PENDING | |
 
 ---
 
 ## 4. Current State Metrics & Checks
-- **Current Phase:** Phase 9 Complete
-- **Passing Tests:** 59 automated tests passing across 15 test suites:
-  - `tests/unit/config.test.js` (7 tests)
-  - `tests/unit/requestId.test.js` (3 tests)
-  - `tests/unit/errorHandler.test.js` (3 tests)
-  - `tests/unit/health.test.js` (2 tests: `/health/live` and `/health/ready` with Redis, Mongo, Queue status)
-  - `tests/unit/auditLog.model.test.js` (5 tests: fields, enums, required indexes)
-  - `tests/integration/mongo.smoke.test.js` (1 test: live insert, read, compound index query, cleanup)
-  - `tests/unit/rateLimiter.service.test.js` (4 tests: input parameter validation)
-  - `tests/integration/rateLimiter.integration.test.js` (4 tests: quota enforcement, sliding expiration, same-ms concurrency, non-insertion on denial)
-  - `tests/unit/identifyClient.test.js` (5 tests: API-key precedence, IP fallback, privacy digest verification)
-  - `tests/integration/rateLimit.http.test.js` (7 tests: HTTP 200 headers, 429 with Retry-After, separate quotas per key, IP fallback, zero credential leakage, 503 fail-closed, degraded fail-open)
-  - `tests/integration/gateway.proxy.test.js` (6 tests: allowed proxying, zero upstream hits on 429 denial, 504 proxy timeout, 502 bad gateway, body forwarding on POST, SSRF injection protection)
-  - `tests/unit/auditWorker.test.js` (3 tests: payload validation, retry on transient DB failure, idempotent duplicate event handling)
-  - `tests/integration/audit.e2e.test.js` (2 tests: end-to-end 429 persistence in MongoDB via BullMQ, decoupling with offline worker)
-  - `tests/integration/rateLimit.concurrency.test.js` (2 tests: single instance 50 concurrent requests, multi-gateway shared Redis concurrency)
-  - `tests/integration/failureModes.test.js` (5 tests: Redis down 503 fail-closed, MongoDB down live/ready degradation, queue down degradation, upstream 504 timeout, upstream 502 bad gateway)
-- **Failing Tests:** 0
+- **Current Phase:** Phase 10 Complete
+- **Passing Tests:** 59 automated tests passing across 15 test suites
+- **Measured Latency Benchmarks (Concurrency 10, N=500):**
+  - Baseline (`GET /health/live`): 293.3 req/s, p50: 28.72ms, p95: 85.49ms, p99: 104.78ms
+  - Gateway Allowed (`GET /gateway/v1/catalog`): 85.4 req/s, p50: 90.02ms, p95: 342.42ms, p99: 384.28ms
+  - Gateway Rate-Limited (`GET /gateway/v1/catalog` 429): 180.2 req/s, p50: 42.75ms, p95: 116.70ms, p99: 307.63ms
+- **MongoDB Query Performance:**
+  - Compound Index `{ identityDigest: 1, occurredAt: -1 }`: 101 keys examined, 101 docs examined, Selectivity Ratio 1.00 (8ms)
+  - Unindexed linear scan (`COLLSCAN`): 2,221 docs examined, Selectivity Ratio 21.99
 - **Running Services:** Standalone Express gateway server with non-blocking MongoDB, Redis, and BullMQ queue connections
 - **Endpoints Active:**
   - `GET /health/live` (HTTP 200 JSON process liveness)
@@ -82,6 +73,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ---
 
 ## 5. Next Task
-**Phase 10 — Performance Measurement & Benchmarks**
-- Create `scripts/benchmark.js` executing throughput and latency measurement for `GET /health/live` vs `GET /gateway/v1/catalog`.
-- Generate `docs/BENCHMARKS.md` recording real measurements (p50, p95, p99) and MongoDB `explain("executionStats")` analysis verifying index usage on `occurredAt` and `identityDigest`.
+**Phase 11 — Docker & Local Reproducibility**
+- Create `Dockerfile` (multi-stage Node.js 22 LTS alpine build).
+- Create `.dockerignore`.
+- Create `docker-compose.yml` (orchestrating gateway, mock-upstream, redis, mongodb, audit-worker with healthchecks and named volumes).
+- Verify containerization and multi-service inter-container networking.

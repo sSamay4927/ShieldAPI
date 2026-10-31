@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "test": "jest --runInBand --forceExit",
-    "worker": "node src/workers/auditWorker.js"
+    "worker": "node src/workers/auditWorker.js",
+    "benchmark": "node scripts/benchmark.js"
   },
   "keywords": [
     "rate-limiter",

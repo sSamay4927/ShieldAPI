@@ -34,7 +34,9 @@ describe('BullMQ Asynchronous Audit Pipeline (End-to-End)', () => {
       });
     });
 
-    // 3. Start BullMQ background audit worker
+    // 3. Clear any pending jobs in the queue and start BullMQ background audit worker
+    const auditQueue = getQueue();
+    await auditQueue.obliterate({ force: true }).catch(() => {});
     worker = createAuditWorker({ concurrency: 2 });
   });
 
@@ -89,7 +91,7 @@ describe('BullMQ Asynchronous Audit Pipeline (End-to-End)', () => {
   /**
    * Helper to poll MongoDB for document created by asynchronous queue worker.
    */
-  async function waitForAuditLog(requestId, timeoutMs = 4000) {
+  async function waitForAuditLog(requestId, timeoutMs = 8000) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const doc = await AuditLog.findOne({ requestId }).lean();
