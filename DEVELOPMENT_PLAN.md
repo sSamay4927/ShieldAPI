@@ -311,10 +311,10 @@ docs/DECISIONS.md
 
 ## Acceptance Gate (All must pass before moving on)
 
-- [ ] `git status` shows a clean working tree after the initial commit
-- [ ] `.env` and `node_modules/` are listed in `.gitignore`
-- [ ] `docs/BUILD_STATE.md` exists and says implementation has not started
-- [ ] No application source files exist yet
+- [x] `git status` shows a clean working tree after the initial commit
+- [x] `.env` and `node_modules/` are listed in `.gitignore`
+- [x] `docs/BUILD_STATE.md` exists and says implementation has not started
+- [x] No application source files exist yet
 
 ## Git Commit
 
@@ -373,10 +373,10 @@ docs/BUILD_STATE.md   ← Update current phase to "Phase 1 complete"
 
 ## Acceptance Gate
 
-- [ ] Every route is documented with method, path, rate-limited flag, and expected behavior
-- [ ] The 429 response is clearly distinct from the 503 Redis error — different error codes, different meanings
-- [ ] The document explicitly states this is application-level protection, not network-level DDoS mitigation
-- [ ] No application source code has been written
+- [x] Every route is documented with method, path, rate-limited flag, and expected behavior
+- [x] The 429 response is clearly distinct from the 503 Redis error — different error codes, different meanings
+- [x] The document explicitly states this is application-level protection, not network-level DDoS mitigation
+- [x] No application source code has been written
 
 ## Git Commit
 
@@ -443,10 +443,10 @@ package-lock.json
 
 ## Acceptance Gate
 
-- [ ] `npm start` starts the server without needing Redis or MongoDB
-- [ ] `GET /health/live` returns HTTP 200 and a JSON body
-- [ ] `GET /unknown-route` returns HTTP 404 and a JSON body (not an HTML Express error page)
-- [ ] `app.js` can be `require()`'d in a test file without binding a port
+- [x] `npm start` starts the server without needing Redis or MongoDB
+- [x] `GET /health/live` returns HTTP 200 and a JSON body
+- [x] `GET /unknown-route` returns HTTP 404 and a JSON body (not an HTML Express error page)
+- [x] `app.js` can be `require()`'d in a test file without binding a port
 
 ## Git Commit
 
@@ -525,10 +525,10 @@ Install: `dotenv`, `pino` (or equivalent), `uuid`, `jest`, `supertest`
 
 ## Acceptance Gate
 
-- [ ] Starting the app with a missing required env var exits with a clear, human-readable error
-- [ ] Every HTTP response contains an `X-Request-Id` header
-- [ ] Authorization and API key values never appear in logs
-- [ ] A simulated internal error returns JSON `{ error: "internal_server_error" }` — no stack trace in body
+- [x] Starting the app with a missing required env var exits with a clear, human-readable error
+- [x] Every HTTP response contains an `X-Request-Id` header
+- [x] Authorization and API key values never appear in logs
+- [x] A simulated internal error returns JSON `{ error: "internal_server_error" }` — no stack trace in body
 
 ## Git Commit
 
@@ -606,11 +606,11 @@ Install: `mongoose`
 
 ## Acceptance Gate
 
-- [ ] A real AuditLog document can be inserted into and read from a local MongoDB instance
-- [ ] The two required indexes exist (`occurredAt`, `identityDigest + occurredAt`)
-- [ ] No raw API key is stored in any document
-- [ ] The rate-limit decision code path does NOT touch MongoDB
-- [ ] The gateway starts and `/health/live` returns 200 even if MongoDB is down
+- [x] A real AuditLog document can be inserted into and read from a local MongoDB instance
+- [x] The two required indexes exist (`occurredAt`, `identityDigest + occurredAt`)
+- [x] No raw API key is stored in any document
+- [x] The rate-limit decision code path does NOT touch MongoDB
+- [x] The gateway starts and `/health/live` returns 200 even if MongoDB is down
 
 ## Git Commit
 
@@ -695,12 +695,12 @@ Install: `ioredis`
 
 ## Acceptance Gate
 
-- [ ] With `limit=2`: request 1 → allowed, request 2 → allowed, request 3 → **denied**
-- [ ] A denied request returns `retryAfterMs > 0`
-- [ ] After the window duration passes, a new request is allowed
-- [ ] The entire check-insert decision is inside one Lua script — JavaScript does NOT do a separate read-then-write
-- [ ] Redis server time (`TIME`) is used for the decision — not `Date.now()` on the app server
-- [ ] `X-RateLimit-Reset` is a Unix epoch in seconds; `Retry-After` is a duration in seconds
+- [x] With `limit=2`: request 1 → allowed, request 2 → allowed, request 3 → **denied**
+- [x] A denied request returns `retryAfterMs > 0`
+- [x] After the window duration passes, a new request is allowed
+- [x] The entire check-insert decision is inside one Lua script — JavaScript does NOT do a separate read-then-write
+- [x] Redis server time (`TIME`) is used for the decision — not `Date.now()` on the app server
+- [x] `X-RateLimit-Reset` is a Unix epoch in seconds; `Retry-After` is a duration in seconds
 
 ## Git Commit
 
@@ -782,11 +782,11 @@ docs/BUILD_STATE.md                   ← update
 
 ## Acceptance Gate
 
-- [ ] Two different API keys get separate Redis counters — verified with test
-- [ ] No API key → `req.ip` is used as identity
-- [ ] Raw API key does NOT appear in Redis key names or logs anywhere
-- [ ] Exceeding quota returns 429, does not continue to next middleware
-- [ ] Redis outage returns 503 — NOT 429
+- [x] Two different API keys get separate Redis counters — verified with test
+- [x] No API key → `req.ip` is used as identity
+- [x] Raw API key does NOT appear in Redis key names or logs anywhere
+- [x] Exceeding quota returns 429, does not continue to next middleware
+- [x] Redis outage returns 503 — NOT 429
 
 ## Git Commit
 
@@ -861,11 +861,11 @@ Install: `http-proxy-middleware` (or `http-proxy`)
 
 ## Acceptance Gate
 
-- [ ] An allowed request successfully receives the mock upstream's response body
-- [ ] A rate-limited request gets 429 and the mock upstream receives zero requests — verified by counter
-- [ ] No user input can change the upstream proxy target
-- [ ] Gateway timeout returns 504 with `requestId`; upstream connection failure returns 502
-- [ ] `requestId` appears in both gateway logs and error responses
+- [x] An allowed request successfully receives the mock upstream's response body
+- [x] A rate-limited request gets 429 and the mock upstream receives zero requests — verified by counter
+- [x] No user input can change the upstream proxy target
+- [x] Gateway timeout returns 504 with `requestId`; upstream connection failure returns 502
+- [x] `requestId` appears in both gateway logs and error responses
 
 ## Git Commit
 
@@ -944,11 +944,11 @@ Install: `bullmq`
 
 ## Acceptance Gate
 
-- [ ] A rate-limit violation is stored in MongoDB — verified by reading it back in the test
-- [ ] A transient MongoDB failure causes the job to be retried (verify with retry count in document or logs)
-- [ ] The gateway still returns 429 correctly even when the audit worker is stopped
-- [ ] The worker and queue shut down cleanly (no hanging processes)
-- [ ] The project documentation states: "Queue durability is bounded by Redis availability and configured retry settings"
+- [x] A rate-limit violation is stored in MongoDB — verified by reading it back in the test
+- [x] A transient MongoDB failure causes the job to be retried (verify with retry count in document or logs)
+- [x] The gateway still returns 429 correctly even when the audit worker is stopped
+- [x] The worker and queue shut down cleanly (no hanging processes)
+- [x] The project documentation states: "Queue durability is bounded by Redis availability and configured retry settings"
 
 ## Git Commit
 
@@ -1026,11 +1026,11 @@ Install: `helmet` (if not already installed)
 
 ## Acceptance Gate
 
-- [ ] Single gateway: 50 concurrent requests with limit=10 → **exactly 10** allowed (no over- or under-admission)
-- [ ] Two gateway instances sharing Redis: combined allowed count is **exactly 10**
-- [ ] Tests use unique per-run identities and clean their Redis state before running
-- [ ] All failure modes return the documented status codes
-- [ ] No test makes calls to a public external API
+- [x] Single gateway: 50 concurrent requests with limit=10 → **exactly 10** allowed (no over- or under-admission)
+- [x] Two gateway instances sharing Redis: combined allowed count is **exactly 10**
+- [x] Tests use unique per-run identities and clean their Redis state before running
+- [x] All failure modes return the documented status codes
+- [x] No test makes calls to a public external API
 
 ## Git Commit
 
@@ -1096,10 +1096,10 @@ docs/BUILD_STATE.md       ← update
 
 ## Acceptance Gate
 
-- [ ] The benchmark can be reproduced by running one documented command from a clean environment
-- [ ] Latency and throughput numbers are recorded alongside the test environment details
-- [ ] MongoDB `explain()` output is captured and interpreted (nReturned vs. docsExamined ratio)
-- [ ] **No resume metric exists that is not backed by a row in BENCHMARKS.md**
+- [x] The benchmark can be reproduced by running one documented command from a clean environment
+- [x] Latency and throughput numbers are recorded alongside the test environment details
+- [x] MongoDB `explain()` output is captured and interpreted (nReturned vs. docsExamined ratio)
+- [x] **No resume metric exists that is not backed by a row in BENCHMARKS.md**
 
 ## Git Commit
 
@@ -1199,11 +1199,11 @@ docs/BUILD_STATE.md ← update
 
 ## Acceptance Gate
 
-- [ ] `docker compose up --build` starts the full stack from scratch with no manual steps
-- [ ] `GET http://localhost:3000/health/ready` returns healthy after services are up
-- [ ] A client on the host machine can send requests through the gateway
-- [ ] Restarting containers does NOT lose MongoDB data if the named volume is kept
-- [ ] No secret or `.env` value is baked into the Docker image
+- [x] `docker compose up --build` starts the full stack from scratch with no manual steps
+- [x] `GET http://localhost:3000/health/ready` returns healthy after services are up
+- [x] A client on the host machine can send requests through the gateway
+- [x] Restarting containers does NOT lose MongoDB data if the named volume is kept
+- [x] No secret or `.env` value is baked into the Docker image
 
 ## Git Commit
 
@@ -1298,11 +1298,11 @@ Tech: Node.js, Express.js, Redis, MongoDB, Lua, Docker
 
 ## Acceptance Gate
 
-- [ ] A new developer can set up and run the full stack from README instructions alone
-- [ ] The demo proves: allowed requests, 429 response, identity separation, and concurrency correctness
-- [ ] Known limitations are listed and honest
-- [ ] Every resume metric is traceable to a real row in `docs/BENCHMARKS.md` or a test output
-- [ ] No API key, connection string, or secret appears in any public file
+- [x] A new developer can set up and run the full stack from README instructions alone
+- [x] The demo proves: allowed requests, 429 response, identity separation, and concurrency correctness
+- [x] Known limitations are listed and honest
+- [x] Every resume metric is traceable to a real row in `docs/BENCHMARKS.md` or a test output
+- [x] No API key, connection string, or secret appears in any public file
 
 ## Git Commit
 
@@ -1393,16 +1393,16 @@ We are continuing ShieldAPI in a fresh coding session. Read the attached/current
 
 ## Final Completion Checklist
 
-- [ ] Core gateway is working locally (rate limit → proxy → mock upstream)
-- [ ] Redis Lua script owns the complete atomic rate-limit decision (no split read-write in JS)
-- [ ] Client identity is hashed; raw credentials never appear in logs, Redis, or MongoDB
-- [ ] HTTP 429, Retry-After, rate-limit headers, 503, 502, and 504 are all tested
-- [ ] Allowed requests are forwarded to the upstream; denied requests are never forwarded
-- [ ] MongoDB stores audit events with no raw API keys
-- [ ] BullMQ worker is implemented and tested (or explicitly documented as not included)
-- [ ] Concurrency test passes for one gateway instance and for two instances sharing Redis
-- [ ] Benchmarks include environment details and test settings; no unsupported numbers claimed
-- [ ] `docker compose up --build` starts the full local demo reproducibly
-- [ ] README explains setup, architecture, test commands, demo, and limitations clearly
-- [ ] Every resume bullet describes only a feature that is implemented and verified
+- [x] Core gateway is working locally (rate limit → proxy → mock upstream)
+- [x] Redis Lua script owns the complete atomic rate-limit decision (no split read-write in JS)
+- [x] Client identity is hashed; raw credentials never appear in logs, Redis, or MongoDB
+- [x] HTTP 429, Retry-After, rate-limit headers, 503, 502, and 504 are all tested
+- [x] Allowed requests are forwarded to the upstream; denied requests are never forwarded
+- [x] MongoDB stores audit events with no raw API keys
+- [x] BullMQ worker is implemented and tested (or explicitly documented as not included)
+- [x] Concurrency test passes for one gateway instance and for two instances sharing Redis
+- [x] Benchmarks include environment details and test settings; no unsupported numbers claimed
+- [x] `docker compose up --build` starts the full local demo reproducibly
+- [x] README explains setup, architecture, test commands, demo, and limitations clearly
+- [x] Every resume bullet describes only a feature that is implemented and verified
 
