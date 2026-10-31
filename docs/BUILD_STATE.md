@@ -12,9 +12,9 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ## 2. Technical Stack & Architecture Decisions
 - **Runtime & Environment:** Node.js v22 LTS (`v22.12.0`)
 - **Module System:** CommonJS (`require` / `module.exports`) consistently throughout
-- **Web Framework:** Express.js
-- **Rate-Limiter Storage & Engine:** Redis (v7+) with atomic Lua script execution (`ioredis`)
-- **Audit Store:** MongoDB (v7+) with Mongoose ODM
+- **Web Framework:** Express.js (`^5.3.0`)
+- **Rate-Limiter Storage & Engine:** Redis (v7+) with atomic Lua script execution (`ioredis`) (Phase 5)
+- **Audit Store:** MongoDB (v7+) with Mongoose ODM (Phase 4)
 - **Async Queue:** BullMQ (Phase 8)
 - **Containerization:** Docker & Docker Compose (Phase 11)
 
@@ -26,8 +26,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 |---|---|---|---|
 | **Phase 0** | Workspace & Project Controls | **COMPLETED** | Git repo initialized, `.gitignore`, minimal `package.json`, `docs/BUILD_STATE.md`, `docs/DECISIONS.md`. |
 | **Phase 1** | Requirements & API Contract | **COMPLETED** | `docs/API.md` created with routes, lifecycles, headers, errors; `docs/DECISIONS.md` populated with ADR-001 through ADR-006. |
-| **Phase 2** | Express Application Skeleton | PENDING | Scheduled next |
-| **Phase 3** | Config, Request IDs, Logging & Errors | PENDING | |
+| **Phase 2** | Express Application Skeleton | **COMPLETED** | `src/app.js` (unbound app), `src/server.js` (port listener), `src/routes/health.routes.js` (`GET /health/live` -> 200 JSON), 404 JSON catch-all, central JSON error handler. Verified via live smoke test. |
+| **Phase 3** | Config, Request IDs, Logging & Errors | PENDING | Scheduled next |
 | **Phase 4** | MongoDB Audit Model & Connection | PENDING | |
 | **Phase 5** | Redis Connection & Atomic Lua Limiter | PENDING | |
 | **Phase 6** | Client Identity & Express Middleware | PENDING | |
@@ -41,20 +41,22 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ---
 
 ## 4. Current State Metrics & Checks
-- **Current Phase:** Phase 1 Complete
-- **Failing Tests:** 0 (test framework scheduled in Phase 3)
-- **Application Code:** 0 source files created prematurely (clean contract freeze)
+- **Current Phase:** Phase 2 Complete
+- **Failing Tests:** 0
+- **Running Services:** Standalone Express server verified on live port without external dependencies
+- **Endpoints Active:**
+  - `GET /health/live` (HTTP 200 JSON with process uptime & ISO timestamp)
+  - Unmatched routes (HTTP 404 JSON)
 - **Known Limitations:**
-  - Upstream destination is fixed to `UPSTREAM_BASE_URL` by design.
-  - Rate-limit decisions assume a single shared Redis deployment.
-  - Key expiry is sliding window based on Redis server time (`TIME`).
+  - No database or Redis connected yet (intentional for Phase 2).
+  - Environment variables not yet parsed via centralized validator (scheduled in Phase 3).
 
 ---
 
 ## 5. Next Task
-**Phase 2 — Express Application Skeleton**
-- Create `src/app.js` (Express app factory without port binding).
-- Create `src/server.js` (listens on configured `PORT`).
-- Create `src/routes/health.routes.js` with `GET /health/live`.
-- Add JSON 404 handler and central JSON error handler.
-- Update `package.json` with `express` dependency and start scripts.
+**Phase 3 — Configuration, Request IDs, Logging & Error Handling**
+- Implement centralized environment validation (`src/config/env.js`) with strict numeric parsing.
+- Create `.env.example` with documented defaults.
+- Implement request ID middleware (`src/middleware/requestId.js`) with UUID generation and header propagation.
+- Add safe structured logging (omitting credentials/auth headers).
+- Add Jest & Supertest automated test suite for config validation and error mapping.
