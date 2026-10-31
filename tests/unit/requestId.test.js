@@ -33,3 +33,4 @@ describe('Request ID Middleware', () => {
     expect(res.headers['x-request-id']).toMatch(UUID_PATTERN);
   });
 });
+

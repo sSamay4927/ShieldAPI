@@ -37,16 +37,16 @@ function loadConfig(env = process.env) {
     throw new Error(`Invalid environment configuration: "PORT" must be <= 65535. Received: "${PORT}"`);
   }
 
-  const UPSTREAM_BASE_URL = parseUrl('UPSTREAM_BASE_URL', env.UPSTREAM_BASE_URL, 'http://localhost:4001');
+  const UPSTREAM_BASE_URL = parseUrl('UPSTREAM_BASE_URL', env.UPSTREAM_BASE_URL, 'http://127.0.0.1:4001');
 
-  const REDIS_URL = env.REDIS_URL || 'redis://localhost:6379';
+  const REDIS_URL = env.REDIS_URL || 'redis://127.0.0.1:6379';
   if (!REDIS_URL.startsWith('redis://') && !REDIS_URL.startsWith('rediss://')) {
     throw new Error(
       `Invalid environment configuration: "REDIS_URL" must begin with redis:// or rediss://. Received: "${REDIS_URL}"`
     );
   }
 
-  const MONGODB_URI = env.MONGODB_URI || 'mongodb://localhost:27017/shieldapi';
+  const MONGODB_URI = env.MONGODB_URI || 'mongodb://127.0.0.1:27017/shieldapi';
   if (!MONGODB_URI.startsWith('mongodb://') && !MONGODB_URI.startsWith('mongodb+srv://')) {
     throw new Error(
       `Invalid environment configuration: "MONGODB_URI" must begin with mongodb:// or mongodb+srv://. Received: "${MONGODB_URI}"`
