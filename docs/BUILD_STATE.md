@@ -22,6 +22,7 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 - **Rate-Limiter Storage & Engine:** Redis (v7+) with atomic Lua script execution (`ioredis`)
 - **Identity & Privacy:** HMAC-SHA256 (`IDENTITY_HASH_SECRET`) for deterministic client identity without exposing raw API keys or IPs
 - **Rate-Limit Enforcement:** Express middleware returning RFC-compliant headers (`X-RateLimit-*`, `Retry-After`), HTTP 429 on quota exhaustion, and HTTP 503 fail-closed mode on Redis outages
+- **Gateway Proxying & SSRF Prevention:** Fixed-target reverse proxy (`http-proxy-middleware` `^3.0.10`) bound strictly to `UPSTREAM_BASE_URL` with 100kb body limits, proxy timeout enforcement, and sanitized 502/504 error mapping
 - **Async Queue:** BullMQ (Phase 8)
 - **Containerization:** Docker & Docker Compose (Phase 11)
 
@@ -38,8 +39,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 | **Phase 4** | MongoDB Audit Model & Connection | **COMPLETED** | `src/infrastructure/mongo/mongoClient.js` (resilient connection with `runtimeAdapters`), `src/infrastructure/mongo/AuditLog.model.js` (fields, validations, indexes). `GET /health/ready` reports Mongo state. Verified via unit and integration tests (21/21 passing). |
 | **Phase 5** | Redis Connection & Atomic Lua Limiter | **COMPLETED** | `src/infrastructure/redis/redisClient.js` (resilient connection manager with ping and retryStrategy), `src/infrastructure/redis/slidingWindowLog.lua` (atomic TIME, cutoff eviction, ZCARD, ZADD, PEXPIRE, retryAfterMs), `src/services/rateLimiter.service.js` (strict input validation, command registration, return parsing). Verified via unit and live integration tests (29/29 passing). |
 | **Phase 6** | Client Identity & Express Middleware | **COMPLETED** | `src/middleware/identifyClient.js` (HMAC-SHA256 identity extraction with API-key precedence and IP fallback), `src/middleware/rateLimit.js` (RFC rate limit headers, 429 quota rejection, fail-closed 503). Verified via unit and HTTP integration tests (41/41 passing). |
-| **Phase 7** | Mock Upstream & Fixed Gateway Proxy | PENDING | Scheduled next |
-| **Phase 8** | BullMQ Async Audit Pipeline | PENDING | |
+| **Phase 7** | Mock Upstream & Fixed Gateway Proxy | **COMPLETED** | `src/upstream/mockUpstream.js` (`/catalog`, `/slow`, `/echo` with hit tracking), `src/proxy/upstreamProxy.js` (strict fixed target forwarding, body re-streaming, 502/504 error mapping), `src/routes/gateway.routes.js` mounted at `/gateway/v1`. Verified via end-to-end integration tests (47/47 passing). |
+| **Phase 8** | BullMQ Async Audit Pipeline | PENDING | Scheduled next |
 | **Phase 9** | Concurrency & Failure Test Suite | PENDING | |
 | **Phase 10** | Performance Measurement & Benchmarks | PENDING | |
 | **Phase 11** | Docker & Local Reproducibility | PENDING | |
@@ -48,8 +49,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ---
 
 ## 4. Current State Metrics & Checks
-- **Current Phase:** Phase 6 Complete
-- **Passing Tests:** 41 automated tests passing across 10 test suites:
+- **Current Phase:** Phase 7 Complete
+- **Passing Tests:** 47 automated tests passing across 11 test suites:
   - `tests/unit/config.test.js` (7 tests)
   - `tests/unit/requestId.test.js` (3 tests)
   - `tests/unit/errorHandler.test.js` (3 tests)
@@ -60,20 +61,25 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
   - `tests/integration/rateLimiter.integration.test.js` (4 tests: quota enforcement, sliding expiration, same-ms concurrency, non-insertion on denial)
   - `tests/unit/identifyClient.test.js` (5 tests: API-key precedence, IP fallback, privacy digest verification)
   - `tests/integration/rateLimit.http.test.js` (7 tests: HTTP 200 headers, 429 with Retry-After, separate quotas per key, IP fallback, zero credential leakage, 503 fail-closed, degraded fail-open)
+  - `tests/integration/gateway.proxy.test.js` (6 tests: allowed proxying, zero upstream hits on 429 denial, 504 proxy timeout, 502 bad gateway, body forwarding on POST, SSRF injection protection)
 - **Failing Tests:** 0
-- **Running Services:** Standalone Express server with non-blocking MongoDB and Redis connections
+- **Running Services:** Standalone Express gateway server with non-blocking MongoDB and Redis connections
 - **Endpoints Active:**
-  - `GET /health/live` (HTTP 200 JSON with process uptime, ISO timestamp, and `X-Request-Id`)
-  - `GET /health/ready` (HTTP 200 JSON with Redis and MongoDB connection readiness)
+  - `GET /health/live` (HTTP 200 JSON process liveness)
+  - `GET /health/ready` (HTTP 200 JSON Redis and MongoDB readiness)
+  - `GET /gateway/v1/catalog` (Proxied to mock upstream `/catalog` with rate limiting)
+  - `GET /gateway/v1/slow` (Proxied to mock upstream `/slow` with 504 timeout enforcement)
+  - `POST /gateway/v1/echo` (Proxied to mock upstream `/echo` with body re-streaming)
   - Unmatched routes (HTTP 404 JSON with `requestId`)
 - **Known Limitations:**
-  - Mock upstream service and reverse proxy forwarding scheduled for Phase 7.
-  - Audit documents not yet enqueued from request path (synchronous bypass prevents performance impact; BullMQ scheduled in Phase 8).
+  - Audit logging of rate-limit violations currently bypassed on hot path; BullMQ async worker scheduled for Phase 8.
 
 ---
 
 ## 5. Next Task
-**Phase 7 — Mock Upstream Service & Fixed-Target Gateway Proxy**
-- Implement `src/upstream/mockUpstream.js` providing `/catalog`, `/slow`, and `/echo` endpoints.
-- Implement `src/proxy/upstreamProxy.js` forwarding `/gateway/v1/*` traffic strictly to `UPSTREAM_BASE_URL` with timeouts and 502/504 error handling.
-- Verify end-to-end gateway proxying and ensure rate-limited requests are blocked before ever reaching upstream.
+**Phase 8 — Asynchronous Audit Pipeline with BullMQ**
+- Install `bullmq`.
+- Implement `src/infrastructure/queue/auditQueue.js` (named queue `shieldapi:audit`, non-blocking enqueueing, structured error handling).
+- Implement `src/services/audit.service.js` (enqueueing rate-limit violation events with safe identity digests).
+- Implement `src/workers/auditWorker.js` (background worker persisting jobs to MongoDB `AuditLog` collection with bounded exponential retry).
+- End-to-end integration test verifying that a 429 rate-limit violation produces a persisted document in MongoDB via the BullMQ pipeline without blocking the HTTP response.

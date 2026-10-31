@@ -83,3 +83,18 @@ This document records the architectural and design decisions confirmed for Shiel
 - **Consequences:**
   - Standardized client integration with transparent retry backoff.
   - Cryptographic decoupling ensures zero raw API key exposure across Redis, memory traces, or external probes.
+
+---
+
+### ADR-008: Fixed-Target Reverse Proxy Routing and SSRF Prevention
+
+- **Status:** Accepted (Phase 7)
+- **Context:** An API Gateway forwarding client requests can become an open proxy or Server-Side Request Forgery (SSRF) vector if destination hosts are determined by request headers, query parameters, or client payloads.
+- **Decision:**
+  - Target destination is strictly hardcoded to `config.UPSTREAM_BASE_URL`.
+  - Client headers (`Host`, `X-Forwarded-Host`, `X-Forwarded-Server`) and URL query parameters are completely ignored for upstream destination resolution.
+  - Incoming request bodies are size-bounded to 100kb and re-streamed to upstream via `fixRequestBody`.
+  - Upstream network errors return sanitized `502 Bad Gateway` (`bad_gateway`) or `504 Gateway Timeout` (`gateway_timeout`) without leaking internal addresses or stack traces.
+- **Consequences:**
+  - Completely eliminates SSRF attack vectors.
+  - Provides consistent distributed tracing via propagated `X-Request-Id`.

@@ -23,3 +23,4 @@ describe('Rate Limiter Service - Argument Validation (Unit)', () => {
     await expect(checkLimit('key:1', 60000, 5, null)).rejects.toThrow(/invalid.*member/i);
   });
 });
+
