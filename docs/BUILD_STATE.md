@@ -19,7 +19,9 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 - **Audit Store:** MongoDB (v7+) with Mongoose ODM (`^8.19.1`)
   - Schema: `AuditLog` with HMAC digest, `occurredAt`, `route`, `decision`, `requestId`, `limit`, `windowMs`, `retryAfterMs`
   - Indexes: `{ occurredAt: -1 }`, `{ identityDigest: 1, occurredAt: -1 }`, `{ expireAt: 1 }` (TTL)
-- **Rate-Limiter Storage & Engine:** Redis (v7+) with atomic Lua script execution (`ioredis`) (Phase 5)
+- **Rate-Limiter Storage & Engine:** Redis (v7+) with atomic Lua script execution (`ioredis`)
+- **Identity & Privacy:** HMAC-SHA256 (`IDENTITY_HASH_SECRET`) for deterministic client identity without exposing raw API keys or IPs
+- **Rate-Limit Enforcement:** Express middleware returning RFC-compliant headers (`X-RateLimit-*`, `Retry-After`), HTTP 429 on quota exhaustion, and HTTP 503 fail-closed mode on Redis outages
 - **Async Queue:** BullMQ (Phase 8)
 - **Containerization:** Docker & Docker Compose (Phase 11)
 
@@ -35,8 +37,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 | **Phase 3** | Config, Request IDs, Logging & Errors | **COMPLETED** | `.env.example`, `src/config/env.js`, `src/config/policies.js`, `src/middleware/requestId.js`, `src/utils/logger.js`, `src/utils/errors.js`, `src/middleware/errorHandler.js`. 13/13 automated unit tests passing. |
 | **Phase 4** | MongoDB Audit Model & Connection | **COMPLETED** | `src/infrastructure/mongo/mongoClient.js` (resilient connection with `runtimeAdapters`), `src/infrastructure/mongo/AuditLog.model.js` (fields, validations, indexes). `GET /health/ready` reports Mongo state. Verified via unit and integration tests (21/21 passing). |
 | **Phase 5** | Redis Connection & Atomic Lua Limiter | **COMPLETED** | `src/infrastructure/redis/redisClient.js` (resilient connection manager with ping and retryStrategy), `src/infrastructure/redis/slidingWindowLog.lua` (atomic TIME, cutoff eviction, ZCARD, ZADD, PEXPIRE, retryAfterMs), `src/services/rateLimiter.service.js` (strict input validation, command registration, return parsing). Verified via unit and live integration tests (29/29 passing). |
-| **Phase 6** | Client Identity & Express Middleware | PENDING | Scheduled next |
-| **Phase 7** | Mock Upstream & Fixed Gateway Proxy | PENDING | |
+| **Phase 6** | Client Identity & Express Middleware | **COMPLETED** | `src/middleware/identifyClient.js` (HMAC-SHA256 identity extraction with API-key precedence and IP fallback), `src/middleware/rateLimit.js` (RFC rate limit headers, 429 quota rejection, fail-closed 503). Verified via unit and HTTP integration tests (41/41 passing). |
+| **Phase 7** | Mock Upstream & Fixed Gateway Proxy | PENDING | Scheduled next |
 | **Phase 8** | BullMQ Async Audit Pipeline | PENDING | |
 | **Phase 9** | Concurrency & Failure Test Suite | PENDING | |
 | **Phase 10** | Performance Measurement & Benchmarks | PENDING | |
@@ -46,8 +48,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ---
 
 ## 4. Current State Metrics & Checks
-- **Current Phase:** Phase 5 Complete
-- **Passing Tests:** 29 automated tests passing across 8 test suites:
+- **Current Phase:** Phase 6 Complete
+- **Passing Tests:** 41 automated tests passing across 10 test suites:
   - `tests/unit/config.test.js` (7 tests)
   - `tests/unit/requestId.test.js` (3 tests)
   - `tests/unit/errorHandler.test.js` (3 tests)
@@ -56,6 +58,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
   - `tests/integration/mongo.smoke.test.js` (1 test: live insert, read, compound index query, cleanup)
   - `tests/unit/rateLimiter.service.test.js` (4 tests: input parameter validation)
   - `tests/integration/rateLimiter.integration.test.js` (4 tests: quota enforcement, sliding expiration, same-ms concurrency, non-insertion on denial)
+  - `tests/unit/identifyClient.test.js` (5 tests: API-key precedence, IP fallback, privacy digest verification)
+  - `tests/integration/rateLimit.http.test.js` (7 tests: HTTP 200 headers, 429 with Retry-After, separate quotas per key, IP fallback, zero credential leakage, 503 fail-closed, degraded fail-open)
 - **Failing Tests:** 0
 - **Running Services:** Standalone Express server with non-blocking MongoDB and Redis connections
 - **Endpoints Active:**
@@ -63,13 +67,13 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
   - `GET /health/ready` (HTTP 200 JSON with Redis and MongoDB connection readiness)
   - Unmatched routes (HTTP 404 JSON with `requestId`)
 - **Known Limitations:**
-  - Express rate-limit middleware wiring scheduled for Phase 6.
+  - Mock upstream service and reverse proxy forwarding scheduled for Phase 7.
   - Audit documents not yet enqueued from request path (synchronous bypass prevents performance impact; BullMQ scheduled in Phase 8).
 
 ---
 
 ## 5. Next Task
-**Phase 6 — Client Identity & Express Rate-Limit Middleware**
-- Implement `src/middleware/identifyClient.js` extracting client identity (API key or IP fallback) with HMAC-SHA256 digestion.
-- Implement `src/middleware/rateLimit.js` executing `checkLimit()`, attaching standard headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`), returning 429 JSON on quota violation, and enforcing fail-closed (503) mode on Redis failure.
-- Unit and integration tests for middleware behavior and response headers.
+**Phase 7 — Mock Upstream Service & Fixed-Target Gateway Proxy**
+- Implement `src/upstream/mockUpstream.js` providing `/catalog`, `/slow`, and `/echo` endpoints.
+- Implement `src/proxy/upstreamProxy.js` forwarding `/gateway/v1/*` traffic strictly to `UPSTREAM_BASE_URL` with timeouts and 502/504 error handling.
+- Verify end-to-end gateway proxying and ensure rate-limited requests are blocked before ever reaching upstream.

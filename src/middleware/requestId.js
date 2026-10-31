@@ -20,6 +20,7 @@ function requestIdMiddleware(req, res, next) {
   }
 
   req.requestId = requestId;
+  req.id = requestId;
   res.setHeader('X-Request-Id', requestId);
 
   next();

@@ -69,3 +69,17 @@ This document records the architectural and design decisions confirmed for Shiel
 - **Consequences:**
   - Prevents header spoofing attacks on client IP extraction.
   - Requires documentation for reverse proxy deployment scenarios.
+
+---
+
+### ADR-007: Client Identity Extraction Precedence and Response Header Contract
+
+- **Status:** Accepted (Phase 6)
+- **Context:** Requests arrive with various identifiers (API keys, IP addresses). The rate limiter must determine a single authoritative identity and communicate quota state transparently to clients using standardized HTTP headers.
+- **Decision:**
+  - **Identity Precedence:** `X-API-Key` takes precedence over IP fallback. If present, it represents an authenticated tenant; otherwise, `req.ip` is used.
+  - **Digestion:** All identities are transformed into 64-character HMAC-SHA256 digests prior to Redis key creation (`shieldapi:rl:v1:<policy>:<digest>`).
+  - **Headers Contract:** All evaluated responses return `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` (Unix epoch seconds). Over-quota responses (429) also attach `Retry-After` (duration in seconds) and stop further execution immediately.
+- **Consequences:**
+  - Standardized client integration with transparent retry backoff.
+  - Cryptographic decoupling ensures zero raw API key exposure across Redis, memory traces, or external probes.
