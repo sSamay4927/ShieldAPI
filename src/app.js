@@ -1,37 +1,30 @@
 const express = require('express');
+const requestIdMiddleware = require('./middleware/requestId');
+const { requestLoggerMiddleware } = require('./utils/logger');
+const errorHandler = require('./middleware/errorHandler');
 const healthRoutes = require('./routes/health.routes');
+const { NotFoundError } = require('./utils/errors');
 
 const app = express();
 
-// Standard middleware
+// 1. Request ID assignment and propagation (runs on every incoming request)
+app.use(requestIdMiddleware);
+
+// 2. Structured request logging (safe, no secret leakage)
+app.use(requestLoggerMiddleware);
+
+// 3. Standard body parsing
 app.use(express.json());
 
-// Diagnostics & health routes
+// 4. Diagnostics & health routes
 app.use('/health', healthRoutes);
 
-// Catch-all 404 handler for unknown routes
+// 5. Catch-all 404 handler for unmatched routes
 app.use((req, res, next) => {
-  res.status(404).json({
-    error: 'not_found',
-    message: 'The requested endpoint does not exist.',
-    path: req.originalUrl
-  });
+  next(new NotFoundError(`The requested endpoint does not exist.`));
 });
 
-// Central error handler
-// Note: Must retain 4 arguments (err, req, res, next) for Express to recognise it as an error middleware
-// eslint-disable-next-line no-unused-vars
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || err.status || 500;
-  const errorCode = err.code || 'internal_server_error';
-  const errorMessage = statusCode === 500
-    ? 'An unexpected internal server error occurred.'
-    : (err.message || 'Error processing request');
-
-  res.status(statusCode).json({
-    error: errorCode,
-    message: errorMessage
-  });
-});
+// 6. Central JSON error handler
+app.use(errorHandler);
 
 module.exports = app;

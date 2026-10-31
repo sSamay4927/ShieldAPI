@@ -1,9 +1,8 @@
 const app = require('./app');
+const { config } = require('./config/env');
 
-const PORT = process.env.PORT || 3000;
-
-const server = app.listen(PORT, () => {
-  console.log(`[ShieldAPI] Server running on port ${PORT} (PID: ${process.pid})`);
+const server = app.listen(config.PORT, () => {
+  console.log(`[ShieldAPI] Server running on port ${config.PORT} (PID: ${process.pid}, ENV: ${config.NODE_ENV})`);
 });
 
 // Process signals for graceful termination

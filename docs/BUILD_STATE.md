@@ -13,6 +13,9 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 - **Runtime & Environment:** Node.js v22 LTS (`v22.12.0`)
 - **Module System:** CommonJS (`require` / `module.exports`) consistently throughout
 - **Web Framework:** Express.js (`^5.3.0`)
+- **Configuration & Environment:** `dotenv` (`^18.0.9`) with strict positive numeric validation and frozen config object
+- **Request Tracing:** RFC 4122 UUID v4 generation and header validation (`X-Request-Id`)
+- **Testing:** Jest (`^30.5.2`) + Supertest (`^7.3.1`)
 - **Rate-Limiter Storage & Engine:** Redis (v7+) with atomic Lua script execution (`ioredis`) (Phase 5)
 - **Audit Store:** MongoDB (v7+) with Mongoose ODM (Phase 4)
 - **Async Queue:** BullMQ (Phase 8)
@@ -27,8 +30,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 | **Phase 0** | Workspace & Project Controls | **COMPLETED** | Git repo initialized, `.gitignore`, minimal `package.json`, `docs/BUILD_STATE.md`, `docs/DECISIONS.md`. |
 | **Phase 1** | Requirements & API Contract | **COMPLETED** | `docs/API.md` created with routes, lifecycles, headers, errors; `docs/DECISIONS.md` populated with ADR-001 through ADR-006. |
 | **Phase 2** | Express Application Skeleton | **COMPLETED** | `src/app.js` (unbound app), `src/server.js` (port listener), `src/routes/health.routes.js` (`GET /health/live` -> 200 JSON), 404 JSON catch-all, central JSON error handler. Verified via live smoke test. |
-| **Phase 3** | Config, Request IDs, Logging & Errors | PENDING | Scheduled next |
-| **Phase 4** | MongoDB Audit Model & Connection | PENDING | |
+| **Phase 3** | Config, Request IDs, Logging & Errors | **COMPLETED** | `.env.example`, `src/config/env.js`, `src/config/policies.js`, `src/middleware/requestId.js`, `src/utils/logger.js` (safe header redaction), `src/utils/errors.js`, `src/middleware/errorHandler.js`. 13/13 automated unit tests passing. |
+| **Phase 4** | MongoDB Audit Model & Connection | PENDING | Scheduled next |
 | **Phase 5** | Redis Connection & Atomic Lua Limiter | PENDING | |
 | **Phase 6** | Client Identity & Express Middleware | PENDING | |
 | **Phase 7** | Mock Upstream & Fixed Gateway Proxy | PENDING | |
@@ -41,22 +44,23 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ---
 
 ## 4. Current State Metrics & Checks
-- **Current Phase:** Phase 2 Complete
+- **Current Phase:** Phase 3 Complete
+- **Passing Tests:** 13 unit tests passed across 3 test suites (`tests/unit/config.test.js`, `tests/unit/requestId.test.js`, `tests/unit/errorHandler.test.js`)
 - **Failing Tests:** 0
-- **Running Services:** Standalone Express server verified on live port without external dependencies
+- **Running Services:** Standalone Express server verified with request ID stamping, structured logging, and safe error masking
 - **Endpoints Active:**
-  - `GET /health/live` (HTTP 200 JSON with process uptime & ISO timestamp)
-  - Unmatched routes (HTTP 404 JSON)
+  - `GET /health/live` (HTTP 200 JSON with process uptime, ISO timestamp, and `X-Request-Id` header)
+  - Unmatched routes (HTTP 404 JSON with `requestId`)
 - **Known Limitations:**
-  - No database or Redis connected yet (intentional for Phase 2).
-  - Environment variables not yet parsed via centralized validator (scheduled in Phase 3).
+  - MongoDB and Redis not yet connected (scheduled in Phases 4 & 5).
+  - Rate limiting logic isolated until Redis Lua implementation in Phase 5.
 
 ---
 
 ## 5. Next Task
-**Phase 3 — Configuration, Request IDs, Logging & Error Handling**
-- Implement centralized environment validation (`src/config/env.js`) with strict numeric parsing.
-- Create `.env.example` with documented defaults.
-- Implement request ID middleware (`src/middleware/requestId.js`) with UUID generation and header propagation.
-- Add safe structured logging (omitting credentials/auth headers).
-- Add Jest & Supertest automated test suite for config validation and error mapping.
+**Phase 4 — MongoDB Audit Model & Connection**
+- Install `mongoose`.
+- Implement `src/infrastructure/mongo/mongoClient.js` with connect, disconnect, and connection status reporting.
+- Implement `src/infrastructure/mongo/AuditLog.model.js` with all schema fields and indexes (`occurredAt`, `identityDigest + occurredAt`).
+- Implement integration smoke test (`tests/integration/mongo.smoke.test.js`) to verify insert and read.
+- Ensure gateway readiness probe reflects MongoDB state without blocking process liveness or hot-path requests.
