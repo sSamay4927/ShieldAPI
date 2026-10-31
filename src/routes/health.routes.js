@@ -1,5 +1,6 @@
 const express = require('express');
-const { getStatus: getMongoStatus, isConnected: isMongoConnected } = require('../infrastructure/mongo/mongoClient');
+const { getStatus: getMongoStatus } = require('../infrastructure/mongo/mongoClient');
+const { ping: pingRedis, isConnected: isRedisConnected, getStatus: getRedisStatus } = require('../infrastructure/redis/redisClient');
 
 const router = express.Router();
 
@@ -19,15 +20,35 @@ router.get('/live', (req, res) => {
 /**
  * GET /health/ready
  * Readiness probe for traffic routing.
- * Checks external dependencies status.
- * Note: MongoDB failure reports degraded audit capability without blocking process liveness.
+ * Redis is mandatory for rate-limit decision-making.
+ * MongoDB failure reports degraded audit capability without blocking gateway readiness.
  */
-router.get('/ready', (req, res) => {
-  const mongoStatus = getMongoStatus();
+router.get('/ready', async (req, res) => {
+  let redisHealthy = false;
+  try {
+    const pong = await pingRedis();
+    redisHealthy = pong === 'PONG';
+  } catch {
+    redisHealthy = false;
+  }
 
-  // In Phase 4, rate limiting engine is being staged; Redis check will be wired in Phase 5
+  const mongoStatus = getMongoStatus();
+  const redisStatus = redisHealthy ? 'connected' : getRedisStatus();
+
+  // Fail readiness if Redis (the decision store) is unavailable
+  if (!redisHealthy) {
+    return res.status(503).json({
+      status: 'not_ready',
+      redis: redisStatus,
+      mongo: mongoStatus,
+      message: 'Rate limiter decision store (Redis) is unavailable',
+      timestamp: new Date().toISOString()
+    });
+  }
+
   res.status(200).json({
     status: 'ready',
+    redis: 'connected',
     mongo: mongoStatus,
     timestamp: new Date().toISOString()
   });

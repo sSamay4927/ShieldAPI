@@ -96,3 +96,4 @@ AuditLogSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0, sparse: true });
 const AuditLog = mongoose.models.AuditLog || mongoose.model('AuditLog', AuditLogSchema);
 
 module.exports = AuditLog;
+

@@ -34,8 +34,8 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 | **Phase 2** | Express Application Skeleton | **COMPLETED** | `src/app.js` (unbound app), `src/server.js` (port listener), `src/routes/health.routes.js` (`GET /health/live` -> 200 JSON), 404 JSON catch-all, central JSON error handler. Verified via live smoke test. |
 | **Phase 3** | Config, Request IDs, Logging & Errors | **COMPLETED** | `.env.example`, `src/config/env.js`, `src/config/policies.js`, `src/middleware/requestId.js`, `src/utils/logger.js`, `src/utils/errors.js`, `src/middleware/errorHandler.js`. 13/13 automated unit tests passing. |
 | **Phase 4** | MongoDB Audit Model & Connection | **COMPLETED** | `src/infrastructure/mongo/mongoClient.js` (resilient connection with `runtimeAdapters`), `src/infrastructure/mongo/AuditLog.model.js` (fields, validations, indexes). `GET /health/ready` reports Mongo state. Verified via unit and integration tests (21/21 passing). |
-| **Phase 5** | Redis Connection & Atomic Lua Limiter | PENDING | Scheduled next |
-| **Phase 6** | Client Identity & Express Middleware | PENDING | |
+| **Phase 5** | Redis Connection & Atomic Lua Limiter | **COMPLETED** | `src/infrastructure/redis/redisClient.js` (resilient connection manager with ping and retryStrategy), `src/infrastructure/redis/slidingWindowLog.lua` (atomic TIME, cutoff eviction, ZCARD, ZADD, PEXPIRE, retryAfterMs), `src/services/rateLimiter.service.js` (strict input validation, command registration, return parsing). Verified via unit and live integration tests (29/29 passing). |
+| **Phase 6** | Client Identity & Express Middleware | PENDING | Scheduled next |
 | **Phase 7** | Mock Upstream & Fixed Gateway Proxy | PENDING | |
 | **Phase 8** | BullMQ Async Audit Pipeline | PENDING | |
 | **Phase 9** | Concurrency & Failure Test Suite | PENDING | |
@@ -46,30 +46,30 @@ Build a demonstrable, production-quality distributed API gateway and rate limite
 ---
 
 ## 4. Current State Metrics & Checks
-- **Current Phase:** Phase 4 Complete
-- **Passing Tests:** 21 automated tests passing across 6 test suites:
+- **Current Phase:** Phase 5 Complete
+- **Passing Tests:** 29 automated tests passing across 8 test suites:
   - `tests/unit/config.test.js` (7 tests)
   - `tests/unit/requestId.test.js` (3 tests)
   - `tests/unit/errorHandler.test.js` (3 tests)
   - `tests/unit/health.test.js` (2 tests: `/health/live` and `/health/ready`)
   - `tests/unit/auditLog.model.test.js` (5 tests: fields, enums, required indexes)
   - `tests/integration/mongo.smoke.test.js` (1 test: live insert, read, compound index query, cleanup)
+  - `tests/unit/rateLimiter.service.test.js` (4 tests: input parameter validation)
+  - `tests/integration/rateLimiter.integration.test.js` (4 tests: quota enforcement, sliding expiration, same-ms concurrency, non-insertion on denial)
 - **Failing Tests:** 0
-- **Running Services:** Standalone Express server with non-blocking MongoDB connection
+- **Running Services:** Standalone Express server with non-blocking MongoDB and Redis connections
 - **Endpoints Active:**
   - `GET /health/live` (HTTP 200 JSON with process uptime, ISO timestamp, and `X-Request-Id`)
-  - `GET /health/ready` (HTTP 200 JSON with MongoDB connection status)
+  - `GET /health/ready` (HTTP 200 JSON with Redis and MongoDB connection readiness)
   - Unmatched routes (HTTP 404 JSON with `requestId`)
 - **Known Limitations:**
-  - Redis connection and atomic Lua script scheduled for Phase 5.
+  - Express rate-limit middleware wiring scheduled for Phase 6.
   - Audit documents not yet enqueued from request path (synchronous bypass prevents performance impact; BullMQ scheduled in Phase 8).
 
 ---
 
 ## 5. Next Task
-**Phase 5 — Redis Connection & Atomic Lua Rate Limiter**
-- Install `ioredis`.
-- Implement `src/infrastructure/redis/redisClient.js` with connection, ping, and graceful shutdown.
-- Write `src/infrastructure/redis/slidingWindowLog.lua` implementing Redis server TIME, expired score removal, ZCARD check, atomic member insertion, PEXPIRE TTL, and retry-after calculation.
-- Implement `src/services/rateLimiter.service.js` to register script and parse return tuples.
-- Implement isolated integration test suite proving limits, window boundaries, and rejection behavior.
+**Phase 6 — Client Identity & Express Rate-Limit Middleware**
+- Implement `src/middleware/identifyClient.js` extracting client identity (API key or IP fallback) with HMAC-SHA256 digestion.
+- Implement `src/middleware/rateLimit.js` executing `checkLimit()`, attaching standard headers (`X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`), returning 429 JSON on quota violation, and enforcing fail-closed (503) mode on Redis failure.
+- Unit and integration tests for middleware behavior and response headers.

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand --forceExit"
   },
   "keywords": [
     "rate-limiter",
@@ -21,6 +21,7 @@
   "dependencies": {
     "dotenv": "^18.0.9",
     "express": "^5.3.0",
+    "ioredis": "^6.0.0",
     "mongoose": "^9.11.4"
   },
   "devDependencies": {

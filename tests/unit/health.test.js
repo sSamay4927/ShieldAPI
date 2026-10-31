@@ -22,3 +22,4 @@ describe('Health Routes (/health)', () => {
     expect(res.headers['x-request-id']).toBeDefined();
   });
 });
+
