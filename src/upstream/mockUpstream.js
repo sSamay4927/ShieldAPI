@@ -87,7 +87,7 @@ function startMockUpstream(port = 4001) {
 
 // Direct execution entrypoint
 if (require.main === module) {
-  const port = process.env.UPSTREAM_PORT || 4001;
+  const port = process.env.UPSTREAM_PORT || process.env.PORT || 4001;
   startMockUpstream(port).catch((err) => {
     console.error('[MockUpstream] Failed to start:', err);
     process.exit(1);

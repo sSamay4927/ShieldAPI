@@ -1,0 +1,120 @@
+services:
+  # ----------------------------------------------------------------------------
+  # 1. In-Memory Store & Rate Limiter Engine
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: shieldapi-redis
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 2. Durable Audit Log Persistence
+  # ----------------------------------------------------------------------------
+  mongo:
+    image: mongo:7
+    container_name: shieldapi-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok ? 0 : 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 3. Downstream Mock Upstream Microservice
+  # ----------------------------------------------------------------------------
+  mock-upstream:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shieldapi-mock-upstream
+    command: ["node", "src/upstream/mockUpstream.js"]
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4001/catalog').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 4. ShieldAPI Distributed Gateway Server
+  # ----------------------------------------------------------------------------
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shieldapi-gateway
+    ports:
+      - "3000:3000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      mock-upstream:
+        condition: service_healthy
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - UPSTREAM_BASE_URL=http://mock-upstream:4001
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://mongo:27017/shieldapi
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_MAX_REQUESTS=5
+      - RATE_LIMIT_FAIL_MODE=closed
+      - RATE_LIMIT_IDENTITY_MODE=api-key-or-ip
+      - IDENTITY_HASH_SECRET=demo-docker-production-secret-min32bytes
+      - PROXY_TIMEOUT_MS=5000
+      - AUDIT_RETENTION_DAYS=30
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health/ready').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------------------------
+  # 5. BullMQ Asynchronous Audit Pipeline Worker
+  # ----------------------------------------------------------------------------
+  audit-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shieldapi-audit-worker
+    command: ["node", "src/workers/auditWorker.js"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URI=mongodb://mongo:27017/shieldapi
+      - IDENTITY_HASH_SECRET=demo-docker-production-secret-min32bytes
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+    driver: local
